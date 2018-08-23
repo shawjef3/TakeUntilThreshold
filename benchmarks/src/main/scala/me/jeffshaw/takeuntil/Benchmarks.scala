@@ -53,7 +53,9 @@ class Benchmarks {
   def run(): Unit = {
     var i = 0
     while (i < 100) {
-      implementation(values, maxTotal)
+      val result = implementation(values, maxTotal)
+      //force evalutation in case it's a lazy result
+      result.lastOption
       i += 1
     }
   }

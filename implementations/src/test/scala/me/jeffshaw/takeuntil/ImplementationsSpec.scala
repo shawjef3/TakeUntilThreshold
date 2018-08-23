@@ -9,8 +9,12 @@ class ImplementationsSpec extends FunSuite {
       Var,
       Fold,
       FoldReturn,
+      RecursiveFunction,
       RunningTotals,
-      RunningStateTotals
+      RunningTotalsNoInit,
+      RunningTotalsReversed,
+      RunningTotalsReversedNoInit,
+      RunningStateTotals,
     )
 
   case class TestParameters(
@@ -25,22 +29,38 @@ class ImplementationsSpec extends FunSuite {
         }
       }
     }
-
-    override def toString: String = {
-      s"Test(values = $values, threshold = $threshold, expected = $expected"
-    }
   }
 
-  val tests: Seq[TestParameters] =
+  val seqTests: Seq[TestParameters] =
     Seq(
-      TestParameters(Seq(1,2,3), 0, Seq()),
-      TestParameters(Seq(0,1,2,3), 0, Seq(0)),
-      TestParameters(0 to 100, 100, 0 to 13),
-      TestParameters((0 to 100).reverse, 100, Seq(100)),
+      TestParameters(List(), 0, List()),
+      TestParameters(List(), 1, List()),
+      TestParameters(List(1,1,1), 2, List(1,1)),
+      TestParameters(List(1,0,1), 2, List(1,0,1)),
+      TestParameters(List(1,1,0), 2, List(1,1,0)),
+      TestParameters(List(1,2,3), 0, List()),
+      TestParameters(List(0,1,2,3), 0, List(0)),
       TestParameters(List.fill(100)(0), 0, List.fill(100)(0)),
-      TestParameters(List(3,2,1), 3, Seq(3))
+      TestParameters(List(3,2,1), 3, List(3)),
+      TestParameters(List(1,3), 1, List(1)),
+    )
+  
+  val indexedSeqTests: Seq[TestParameters] =
+    Seq(
+      TestParameters(Vector(), 0, Vector()),
+      TestParameters(Vector(), 1, Vector()),
+      TestParameters(Vector(1,1,1), 2, Vector(1,1)),
+      TestParameters(Vector(1,0,1), 2, Vector(1,0,1)),
+      TestParameters(Vector(1,1,0), 2, Vector(1,1,0)),
+      TestParameters(Vector(1,2,3), 0, Vector()),
+      TestParameters(Vector(0,1,2,3), 0, Vector(0)),
+      TestParameters(0 to 100, 100, 0 to 13),
+      TestParameters((0 to 100).reverse, 100, Vector(100)),
+      TestParameters(Vector.fill(100)(0), 0, Vector.fill(100)(0)),
+      TestParameters(Vector(3,2,1), 3, Vector(3)),
+      TestParameters(Vector(1,3), 1, Vector(1)),
     )
 
-  tests.foreach(_.register())
+  (seqTests ++ indexedSeqTests).foreach(_.register())
 
 }

@@ -24,6 +24,7 @@ class Benchmarks {
     "Var",
     "Fold",
     "FoldReturn",
+    "RecursiveFunction",
     "RunningTotals",
     "RunningTotalsNoInit",
     "RunningTotalsReversed",

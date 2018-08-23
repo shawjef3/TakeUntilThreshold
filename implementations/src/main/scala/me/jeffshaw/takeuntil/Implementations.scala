@@ -1,5 +1,8 @@
 package me.jeffshaw.takeuntil
 
+import scala.annotation.tailrec
+import scala.collection.mutable
+
 trait Implementation extends ((Seq[Int], Int) => Seq[Int]) {
   val Name: String
 
@@ -14,6 +17,7 @@ object Implementation extends (String => Implementation) {
       case Var.Name => Var
       case Fold.Name => Fold
       case FoldReturn.Name => FoldReturn
+      case RecursiveFunction.Name => RecursiveFunction
       case RunningTotals.Name => RunningTotals
       case RunningTotalsNoInit.Name => RunningTotalsNoInit
       case RunningTotalsReversed.Name => RunningTotalsReversed
@@ -53,7 +57,7 @@ object Fold extends Implementation {
 }
 
 object FoldReturn extends Implementation {
-  def apply(values: Seq[Int], threshold: Int): Seq[Int] = {
+  override def apply(values: Seq[Int], threshold: Int): Seq[Int] = {
     val (total, result) =
     //Vector for efficient append.
       values.foldLeft((0, Vector.empty[Int])) {
@@ -67,6 +71,42 @@ object FoldReturn extends Implementation {
   }
 
   override val Name: String = "FoldReturn"
+}
+
+object RecursiveFunction extends Implementation {
+  override val Name: String = "RecursiveFunction"
+
+  override def apply(values: Seq[Int], threshold: Int): Seq[Int] = {
+
+    // Use for when indexed lookup is O(1)
+    @tailrec
+    def indexed(accum: mutable.Buffer[Int], sum: Int, ix: Int): Seq[Int] = {
+      if (ix < values.length) {
+        val nextSum = sum + values(ix)
+        if (nextSum <= threshold) {
+          indexed(accum :+ values(ix), nextSum, ix + 1)
+        } else accum
+      } else accum
+    }
+
+    // Use for when indexed lookup is O(n)
+    @tailrec
+    def otherwise(accum: mutable.Buffer[Int], sum: Int, rest: Seq[Int]): Seq[Int] = {
+      if (rest.nonEmpty) {
+        val nextSum = sum + rest.head
+        if (nextSum <= threshold) {
+          otherwise(accum :+ rest.head, nextSum, rest.tail)
+        } else accum
+      } else accum
+    }
+
+    values match {
+      case ixed: IndexedSeq[Int] =>
+        indexed(mutable.Buffer.empty[Int], 0, 0)
+      case _ =>
+        otherwise(mutable.Buffer.empty[Int], 0, values)
+    }
+  }
 }
 
 object RunningTotals extends Implementation {
@@ -90,7 +130,7 @@ object RunningTotalsReversed extends Implementation {
 }
 
 object RunningTotalsNoInit extends Implementation {
-  def apply(values: Seq[Int], threshold: Int): Seq[Int] = {
+  override def apply(values: Seq[Int], threshold: Int): Seq[Int] = {
     RunningTotalNoInit.ofSeq(values).
       takeWhile(_.total <= threshold).
       map(_.value)
@@ -100,7 +140,7 @@ object RunningTotalsNoInit extends Implementation {
 }
 
 object RunningTotalsReversedNoInit extends Implementation {
-  def apply(values: Seq[Int], threshold: Int): Seq[Int] = {
+  override def apply(values: Seq[Int], threshold: Int): Seq[Int] = {
     RunningTotalReversedNoInit.ofSeq(values).
       takeWhile(_.total <= threshold).
       map(_.value)

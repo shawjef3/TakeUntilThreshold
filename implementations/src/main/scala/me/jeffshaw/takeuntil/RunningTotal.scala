@@ -7,20 +7,19 @@ case class RunningTotal[N](
 
 object RunningTotal {
   def ofSeq[N](values: Seq[N])(implicit num: Numeric[N]): Stream[RunningTotal[N]] = {
-    if (values.isEmpty) {
-      Stream.empty[RunningTotal[N]]
-    } else {
-      val valueStream = values.toStream
-      val firstValue = valueStream.head
+    values.toStream match {
+      case head #:: tail =>
+        lazy val totals: Stream[RunningTotal[N]] =
+          RunningTotal(head, head) #:: {
+            for {
+              (value, RunningTotal(_, previousTotal)) <- tail.zip(totals)
+            } yield RunningTotal(value, num.plus(value, previousTotal))
+          }
 
-      lazy val totals: Stream[RunningTotal[N]] =
-        RunningTotal(firstValue, firstValue) #:: {
-          for {
-            (value, RunningTotal(_, previousTotal)) <- valueStream.tail.zip(totals)
-          } yield RunningTotal(value, num.plus(value, previousTotal))
-        }
+        totals
 
-      totals
+      case _ =>
+        Stream.empty[RunningTotal[N]]
     }
   }
 
@@ -35,9 +34,8 @@ object RunningTotal {
 
 object RunningTotalNoInit {
   def ofSeq[N](values: Seq[N])(implicit num: Numeric[N]): Stream[RunningTotal[N]] = {
-    if (values.isEmpty) {
-      Stream.empty[RunningTotal[N]]
-    } else {
+    // Don't use +: pattern matching here, because it might create a new collection for the tail.
+    if (values.nonEmpty) {
       lazy val totals: Stream[RunningTotal[N]] =
         RunningTotal(values.head, values.head) #:: {
           for {
@@ -46,7 +44,7 @@ object RunningTotalNoInit {
         }
 
       totals
-    }
+    } else Stream.empty[RunningTotal[N]]
   }
 
   object Syntax {
@@ -60,20 +58,18 @@ object RunningTotalNoInit {
 
 object RunningTotalReversed {
   def ofSeq[N](values: Seq[N])(implicit num: Numeric[N]): Stream[RunningTotal[N]] = {
-    if (values.isEmpty) {
-      Stream.empty[RunningTotal[N]]
-    } else {
-      val valueStream = values.toStream
-      val firstValue = valueStream.head
+    values.toStream match {
+      case head +: tail =>
+        lazy val totals: Stream[RunningTotal[N]] =
+          RunningTotal(head, head) #:: {
+            for {
+              (RunningTotal(_, previousTotal), value) <- totals.zip(tail)
+            } yield RunningTotal(value, num.plus(value, previousTotal))
+          }
 
-      lazy val totals: Stream[RunningTotal[N]] =
-        RunningTotal(firstValue, firstValue) #:: {
-          for {
-            (RunningTotal(_, previousTotal), value) <- totals.zip(valueStream.tail)
-          } yield RunningTotal(value, num.plus(value, previousTotal))
-        }
-
-      totals
+        totals
+      case _ =>
+        Stream.empty[RunningTotal[N]]
     }
   }
 
@@ -89,9 +85,8 @@ object RunningTotalReversed {
 
 object RunningTotalReversedNoInit {
   def ofSeq[N](values: Seq[N])(implicit num: Numeric[N]): Stream[RunningTotal[N]] = {
-    if (values.isEmpty) {
-      Stream.empty[RunningTotal[N]]
-    } else {
+    // Don't use +: pattern matching here, because it might create a new collection for the tail.
+    if (values.nonEmpty) {
       lazy val totals: Stream[RunningTotal[N]] =
         RunningTotal(values.head, values.head) #:: {
           for {
@@ -100,7 +95,7 @@ object RunningTotalReversedNoInit {
         }
 
       totals
-    }
+    } else Stream.empty[RunningTotal[N]]
   }
 
   object Syntax {

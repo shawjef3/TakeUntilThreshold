@@ -1,13 +1,20 @@
 package me.jeffshaw.takeuntil
 
 import org.openjdk.jmh.annotations._
+import org.openjdk.jmh.infra.Blackhole
 
 @State(Scope.Benchmark)
 class Benchmarks {
 
-  val values: Seq[Int] = {
-    val deterministicRandom = new util.Random(0)
-    Array.fill(1000000)(deterministicRandom.nextInt(10))
+  def force(values: Seq[Int], blackhole: Blackhole): Unit = {
+    blackhole.consume(
+      values match {
+        case stream: Stream[_] =>
+          stream.force
+        case otherwise =>
+          otherwise
+      }
+    )
   }
 
   @Param(Array(
@@ -29,7 +36,8 @@ class Benchmarks {
     "Var",
     "Fold",
     "FoldReturn",
-    "RecursiveFunction",
+    "VectorRecursiveFunction",
+    "StreamRecursiveFunction",
     "RunningTotals",
     "RunningTotalsNoInit",
     "RunningTotalsReversed",
@@ -41,7 +49,7 @@ class Benchmarks {
   var implementation: Implementation = _
 
   /**
-    * Don't perform the string lookup for the implementation name as part of the benchmark.
+    * Perform the string lookup for the implementation outside of the benchmark.
     */
   @Setup
   def setImplementation(): Unit = {
@@ -50,14 +58,21 @@ class Benchmarks {
 
   @Benchmark
   @OperationsPerInvocation(100)
-  def run(): Unit = {
-    var i = 0
-    while (i < 100) {
-      val result = implementation(values, maxTotal)
-      //force evalutation in case it's a lazy result
-      result.lastOption
-      i += 1
-    }
+  def run(blackhole: Blackhole): Unit = repeatedly(100, blackhole) {
+//    val result = implementation(allValues, maxTotal)
+    /*
+    Force evaluation in case `result` is lazy. This is OK because
+    none of the benchmarks give infinite collections due to the
+    length of `values`.
+     */
+//    blackhole.consume(
+//      result match {
+//        case stream: Stream[_] =>
+//          stream.force
+//        case otherwise =>
+//          otherwise
+//      }
+//    )
   }
 
 }

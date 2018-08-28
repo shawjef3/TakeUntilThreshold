@@ -17,7 +17,8 @@ object Implementation extends (String => Implementation) {
       case Var.Name => Var
       case Fold.Name => Fold
       case FoldReturn.Name => FoldReturn
-      case RecursiveFunction.Name => RecursiveFunction
+      case VectorRecursiveFunction.Name => VectorRecursiveFunction
+      case StreamRecursiveFunction.Name => StreamRecursiveFunction
       case RunningTotals.Name => RunningTotals
       case RunningTotalsNoInit.Name => RunningTotalsNoInit
       case RunningTotalsReversed.Name => RunningTotalsReversed
@@ -73,39 +74,42 @@ object FoldReturn extends Implementation {
   override val Name: String = "FoldReturn"
 }
 
-object RecursiveFunction extends Implementation {
-  override val Name: String = "RecursiveFunction"
+object VectorRecursiveFunction extends Implementation {
+  override val Name: String = "VectorRecursiveFunction"
 
+  // Using an iterator lets us not worry about `values`'s indexed lookup efficiency.
   override def apply(values: Seq[Int], threshold: Int): Seq[Int] = {
-
-    // Use for when indexed lookup is O(1)
     @tailrec
-    def indexed(accum: mutable.Buffer[Int], sum: Int, ix: Int): Seq[Int] = {
-      if (ix < values.length) {
-        val nextSum = sum + values(ix)
+    def aux(accum: mutable.Builder[Int, Seq[Int]], sum: Int, i: Iterator[Int]): Seq[Int] = {
+      if (i.hasNext) {
+        val next = i.next()
+        val nextSum = sum + next
         if (nextSum <= threshold) {
-          indexed(accum :+ values(ix), nextSum, ix + 1)
-        } else accum
-      } else accum
+          aux(accum += next, nextSum, i)
+        } else accum.result()
+      } else accum.result()
     }
 
-    // Use for when indexed lookup is O(n)
-    @tailrec
-    def otherwise(accum: mutable.Buffer[Int], sum: Int, rest: Seq[Int]): Seq[Int] = {
-      if (rest.nonEmpty) {
-        val nextSum = sum + rest.head
+    aux(Vector.newBuilder[Int], 0, values.iterator)
+  }
+}
+
+object StreamRecursiveFunction extends Implementation {
+  override val Name: String = "StreamRecursiveFunction"
+
+  // Using an iterator lets us not worry about `values`'s indexed lookup efficiency.
+  override def apply(values: Seq[Int], threshold: Int): Seq[Int] = {
+    def aux(sum: Int, i: Iterator[Int]): Stream[Int] = {
+      if (i.hasNext) {
+        val next = i.next()
+        val nextSum = sum + next
         if (nextSum <= threshold) {
-          otherwise(accum :+ rest.head, nextSum, rest.tail)
-        } else accum
-      } else accum
+          next #:: aux(nextSum, i)
+        } else Stream.empty
+      } else Stream.empty
     }
 
-    values match {
-      case ixed: IndexedSeq[Int] =>
-        indexed(mutable.Buffer.empty[Int], 0, 0)
-      case _ =>
-        otherwise(mutable.Buffer.empty[Int], 0, values)
-    }
+    aux(0, values.iterator)
   }
 }
 

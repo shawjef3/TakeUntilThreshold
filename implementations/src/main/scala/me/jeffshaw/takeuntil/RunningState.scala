@@ -13,17 +13,18 @@ case class RunningState[Value, State](
   */
 object RunningState {
   def ofSeq[Value, State](values: Seq[Value])(init: State)(combine: (Value, State) => State): Stream[RunningState[Value, State]] = {
-    if (values.isEmpty) {
-      Stream.empty[RunningState[Value, State]]
-    } else {
-      lazy val states: Stream[RunningState[Value, State]] =
-        RunningState(values.head, combine(values.head, init)) #:: {
-          for {
-            (value, RunningState(_, previousState)) <- values.toStream.tail.zip(states)
-          } yield RunningState(value, combine(value, previousState))
-        }
+    values.toStream match {
+      case head #:: tail =>
+        lazy val states: Stream[RunningState[Value, State]] =
+          RunningState(head, combine(head, init)) #:: {
+            for {
+              (value, RunningState(_, previousState)) <- tail.zip(states)
+            } yield RunningState(value, combine(value, previousState))
+          }
 
-      states
+        states
+      case _ =>
+        Stream.empty[RunningState[Value, State]]
     }
   }
 
